@@ -18,7 +18,7 @@ install -m 0755 "$binary" "$stage/bin/theta-spxw-filter"
 install -m 0755 "$root/scripts/start-on-majula.sh" "$stage/scripts/start-on-majula.sh"
 install -m 0644 "$root/README.runtime.md" "$stage/README.md"
 
-python3 - "$stage/manifest.json" "$stage/bin/theta-spxw-filter" <<'PY'
+python3 - "$stage/manifest.json" "$stage/bin/theta-spxw-filter" "$root" <<'PY'
 import hashlib
 import json
 import subprocess
@@ -27,9 +27,10 @@ from pathlib import Path
 
 manifest_path = Path(sys.argv[1])
 binary = Path(sys.argv[2])
+source_root = Path(sys.argv[3])
 def call(args):
     return subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False).stdout
-source_sha = call(["git", "-C", str(binary.parent.parent), "rev-parse", "HEAD"]).strip()
+source_sha = call(["git", "-C", str(source_root), "rev-parse", "HEAD"]).strip()
 manifest = {
     "artifact": binary.name,
     "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
