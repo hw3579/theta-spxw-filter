@@ -33,4 +33,12 @@ tmux new-session -d -s theta-spxw-filter \
 
 The filter subscribes to the single FPSS full option trade stream and publishes only target `TRADE` and `QUOTE` events whose contract root and expiration match the configured target. It archives forwarded wrapped NDJSON to `archive/<expiration>/events.ndjson` by default.
 
+For lightweight forwarding without disk writes, start it with:
+
+```bash
+THETA_FILTER_NO_ARCHIVE=1 ./scripts/start-on-majula.sh
+```
+
+This keeps only the bounded in-memory ring exposed through `/events`.
+
 It does not calculate inventory, infer customer/dealer intent, or emit trading advice.

@@ -36,6 +36,7 @@ struct Options {
     std::string symbol{"SPXW"};
     std::string expiration;
     std::filesystem::path archive_dir{"archive"};
+    bool archive_enabled{true};
     std::size_t ring_capacity{10000};
     int reconnect_ms{1000};
     int duration_seconds{0};
@@ -65,6 +66,7 @@ void PrintUsage(const char* program) {
         << "  --symbol SYMBOL           option root, default SPXW\n"
         << "  --expiration YYYYMMDD     required target expiration\n"
         << "  --archive-dir PATH        append-only event directory, default ./archive\n"
+        << "  --no-archive              disable append-only event archive\n"
         << "  --ring-capacity N         bounded retained event count, default 10000\n"
         << "  --reconnect-ms N          reconnect pause, default 1000\n"
         << "  --duration-seconds N      0 runs until signal, default 0\n";
@@ -86,6 +88,10 @@ Options ParseOptions(int argc, char** argv) {
         if (argument == "--help") {
             PrintUsage(argv[0]);
             std::exit(0);
+        }
+        if (argument == "--no-archive") {
+            options.archive_enabled = false;
+            continue;
         }
         if (index + 1 >= argc) {
             throw std::runtime_error("Missing value for " + argument);
@@ -139,7 +145,7 @@ Options ParseOptions(int argc, char** argv) {
     if (options.listen_host != "127.0.0.1" && options.listen_host != "::1") {
         throw std::runtime_error("--listen-host must be loopback (127.0.0.1 or ::1)");
     }
-    if (options.archive_dir.empty()) {
+    if (options.archive_enabled && options.archive_dir.empty()) {
         throw std::runtime_error("--archive-dir must not be empty");
     }
     return options;
@@ -168,8 +174,11 @@ WsEndpoint ParseWsEndpoint(const std::string& url) {
 
 class SharedState {
   public:
-    SharedState(theta_filter::Target target, const std::filesystem::path& archive_directory, const std::size_t capacity)
+    SharedState(theta_filter::Target target, const std::filesystem::path& archive_directory, const bool archive_enabled, const std::size_t capacity)
         : target_(std::move(target)), ring_(capacity) {
+        if (!archive_enabled) {
+            return;
+        }
         std::error_code error;
         std::filesystem::create_directories(archive_directory, error);
         if (error) {
@@ -232,14 +241,13 @@ class SharedState {
         ring_.Push(*forwarded);
         ++forwarded_;
         last_event_time_ = forwarded->receipt_time_utc;
-        archive_ << serialized.dump() << '\n';
-        archive_.flush();
-        if (!archive_) {
-            last_error_ = "Unable to append archive event";
-            archive_.clear();
-        }
-        if ((forwarded_ % 100U) == 0U) {
+        if (archive_.is_open()) {
+            archive_ << serialized.dump() << '\n';
             archive_.flush();
+            if (!archive_) {
+                last_error_ = "Unable to append archive event";
+                archive_.clear();
+            }
         }
     }
 
@@ -280,7 +288,9 @@ class SharedState {
 
     void Flush() {
         std::lock_guard lock(mutex_);
-        archive_.flush();
+        if (archive_.is_open()) {
+            archive_.flush();
+        }
     }
 
   private:
@@ -469,6 +479,7 @@ int main(int argc, char** argv) {
         const auto state = std::make_shared<SharedState>(
             theta_filter::Target{.symbol = options.symbol, .expiration = options.expiration},
             options.archive_dir,
+            options.archive_enabled,
             options.ring_capacity);
         std::thread http_thread{RunHttpServer, std::cref(options), state, std::ref(stop)};
         std::thread websocket_thread{RunWebSocketClient, std::cref(options), std::cref(endpoint), state, std::ref(stop)};

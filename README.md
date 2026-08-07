@@ -57,3 +57,5 @@ GET /events?limit=N
 ```
 
 Use an SSH local forward to consume those endpoints from HP. See the runtime README bundled with the archive for the detached `tmux` command.
+
+Set `THETA_FILTER_NO_ARCHIVE=1` to disable disk archive creation and keep only the bounded in-memory ring exposed through `/events`.
