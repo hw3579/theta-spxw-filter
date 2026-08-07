@@ -29,9 +29,11 @@ manifest_path = Path(sys.argv[1])
 binary = Path(sys.argv[2])
 def call(args):
     return subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False).stdout
+source_sha = call(["git", "-C", str(binary.parent.parent), "rev-parse", "HEAD"]).strip()
 manifest = {
     "artifact": binary.name,
     "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+    "source_git_sha": source_sha if source_sha else None,
     "file": call(["file", "-b", str(binary)]).strip(),
     "ldd": call(["ldd", str(binary)]).strip(),
     "readelf_dynamic": call(["readelf", "-d", str(binary)]).strip(),
