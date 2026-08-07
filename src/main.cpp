@@ -233,6 +233,7 @@ class SharedState {
         ++forwarded_;
         last_event_time_ = forwarded->receipt_time_utc;
         archive_ << serialized.dump() << '\n';
+        archive_.flush();
         if (!archive_) {
             last_error_ = "Unable to append archive event";
             archive_.clear();
