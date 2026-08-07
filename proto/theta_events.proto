@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package theta_filter.v1;
+
+option cc_enable_arenas = true;
+
+message EventBatch {
+  uint32 schema_version = 1;
+  repeated Event events = 2;
+}
+
+message Event {
+  EventIdentity identity = 1;
+  oneof payload {
+    Trade trade = 2;
+    Quote quote = 3;
+  }
+}
+
+message EventIdentity {
+  uint64 receipt_time_unix_ms = 1;
+  string symbol = 2;
+  uint32 expiration = 3;
+  string right = 4;
+  int64 strike_milli = 5;
+}
+
+message Trade {
+  int64 sequence = 1;
+  uint32 source_date = 2;
+  uint32 source_ms_of_day = 3;
+  double price = 4;
+  uint32 size = 5;
+  uint32 condition = 6;
+  uint32 exchange = 7;
+}
+
+message Quote {
+  uint32 source_date = 1;
+  uint32 source_ms_of_day = 2;
+  double bid = 3;
+  double ask = 4;
+  uint32 bid_size = 5;
+  uint32 ask_size = 6;
+  uint32 bid_condition = 7;
+  uint32 ask_condition = 8;
+  uint32 bid_exchange = 9;
+  uint32 ask_exchange = 10;
+}
