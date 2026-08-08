@@ -14,7 +14,7 @@ sudo -n docker run --rm \
   bash -euc '
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
-    apt-get install -y --no-install-recommends build-essential cmake libboost-all-dev nlohmann-json3-dev ca-certificates
+    apt-get install -y --no-install-recommends build-essential cmake libboost-all-dev nlohmann-json3-dev protobuf-compiler libprotobuf-dev ca-certificates
     rm -rf /var/lib/apt/lists/*
     groupadd -g "$HOST_GID" builder || true
     useradd -m -u "$HOST_UID" -g "$HOST_GID" builder || true

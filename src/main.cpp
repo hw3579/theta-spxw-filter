@@ -1,4 +1,5 @@
 #include "theta_filter/core.hpp"
+#include "theta_filter/protobuf.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
@@ -327,8 +328,9 @@ std::optional<std::size_t> ParseEventsLimit(const std::string& target, const std
         return std::nullopt;
     }
     const std::string value = query.substr(prefix.size());
-    const auto parsed = ParseUnsigned(value, "events limit");
-    if (parsed == 0 || parsed > maximum) {
+    unsigned long long parsed = 0;
+    const auto result = std::from_chars(value.data(), value.data() + value.size(), parsed);
+    if (result.ec != std::errc{} || result.ptr != value.data() + value.size() || parsed == 0 || parsed > maximum) {
         return std::nullopt;
     }
     return static_cast<std::size_t>(parsed);
@@ -372,6 +374,17 @@ void HandleHttpClient(tcp::socket socket, const std::shared_ptr<SharedState>& st
                 request.version(),
                 EventsBody(state->Recent(*limit)),
                 "application/x-ndjson");
+        }
+    } else if (target == "/events.pb" || target.starts_with("/events.pb?")) {
+        const auto limit = ParseEventsLimit(target, state->RingCapacity());
+        if (!limit.has_value()) {
+            response = MakeResponse(http::status::bad_request, request.version(), "invalid limit\n", "text/plain");
+        } else {
+            response = MakeResponse(
+                http::status::ok,
+                request.version(),
+                theta_filter::SerializeEventBatchProtobuf(state->Recent(*limit)),
+                "application/x-protobuf");
         }
     } else {
         response = MakeResponse(http::status::not_found, request.version(), "not found\n", "text/plain");
